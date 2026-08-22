@@ -29,5 +29,38 @@ services:
       users-db:
         condition: service_healthy
 
+  notif-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${NOTIF_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${NOTIF_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${NOTIF_POSTGRES_DB}
+    ports:
+      - "5434:5432"
+    volumes:
+      - notif_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NOTIF_POSTGRES_USER} -d ${NOTIF_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  notif-svc:
+    build: ./notif-svc
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=${NOTIF_DATABASE_URL}
+    depends_on:
+      notif-db:
+        condition: service_healthy
+
+  consul:
+    image: hashicorp/consul:1.17
+    ports:
+      - "8500:8500"
+    command: "agent -dev -client=0.0.0.0"
+
 volumes:
   users_db_data:
+  notif_db_data:
