@@ -9,10 +9,9 @@ principio **Database per Service**.
 - [booking-svc](booking-svc/README.md): implementacion del servicio de reservas.
 - [notif-svc](notif-svc/README.md): implementacion del servicio de notificaciones.
 
-## Estado: Checkpoint 1
+## Estado actual
 
-En este checkpoint se documentan y validan los microservicios implementados
-hasta ahora:
+Se documentan y validan los microservicios implementados hasta ahora:
 
 | Servicio | Puerto | Responsabilidad | Documentacion |
 | --- | ---: | --- | --- |
@@ -24,9 +23,16 @@ Los 3 microservicios del proyecto ya corren con `docker compose up --build`.
 Cada servicio usa PostgreSQL dedicado (`users-db`, `booking-db`, `notif-db`)
 y se levanta mediante el `docker-compose.yml` de la raiz, que tambien incluye
 un contenedor de **Consul** (modo dev) accesible en `http://localhost:8500`.
-El auto-registro de los servicios en Consul corresponde a la Fase 2 (Task 2A)
-y aun no esta implementado. El servidor **MCP** corresponde a etapas
-posteriores y se incorporara al repositorio conforme avance el proyecto.
+
+Avance en service discovery:
+
+- `users-svc` se registra automaticamente en Consul al iniciar.
+- `users-svc` publica health check HTTP con intervalo de 10 segundos y
+	desregistro automatico tras 30 segundos en estado critico.
+- El flujo de desregistro de `users-svc` se ejecuta al apagar el servicio.
+
+El servidor **MCP** corresponde a etapas posteriores y se incorporara al
+repositorio conforme avance el proyecto.
 
 ## Inicio rapido
 

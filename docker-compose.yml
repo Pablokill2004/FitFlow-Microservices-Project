@@ -20,14 +20,23 @@ services:
   users-svc:
     build: ./users-svc
     ports:
-      - "8003:8003"  
+      - "8003:8003"
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - ALGORITHM=${ALGORITHM}
+      - CONSUL_HOST=${CONSUL_HOST:-consul}
+      - CONSUL_PORT=${CONSUL_PORT:-8500}
+      - CONSUL_SERVICE_NAME=${CONSUL_SERVICE_NAME:-users-svc}
+      - CONSUL_SERVICE_ID=${CONSUL_SERVICE_ID:-users-svc-8003}
+      - CONSUL_SERVICE_ADDRESS=${CONSUL_SERVICE_ADDRESS:-users-svc}
+      - CONSUL_SERVICE_PORT=${CONSUL_SERVICE_PORT:-8003}
+      - CONSUL_HEALTH_PATH=${CONSUL_HEALTH_PATH:-/healthz}
     depends_on:
       users-db:
         condition: service_healthy
+      consul:
+        condition: service_started
 
   notif-db:
     image: postgres:15-alpine
