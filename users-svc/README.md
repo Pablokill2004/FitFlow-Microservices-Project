@@ -71,13 +71,58 @@ La respuesta debe incluir el servicio `users-svc` con un check en estado
 
 La resiliencia de las llamadas entre servicios se implementa en
 `booking-svc`. La propagacion de `x-correlation-id` y los logs JSON se
-integran de forma transversal en los servicios.
+integran de forma transversal en los servicios. En `users-svc`, cada request
+usa el valor recibido en `x-correlation-id` o genera un UUID cuando el header
+no existe. El mismo valor se devuelve en la respuesta y se agrega a los logs.
+
+### Logs estructurados
+
+`users-svc` escribe cada evento como un objeto JSON en una sola linea. Cada
+registro incluye `timestamp`, `level`, `service`, `event` y `correlation_id`.
+Los eventos `request_started` y `request_completed` permiten seguir el inicio,
+resultado y duracion de cada request. Los eventos de arranque y Consul tambien
+usan el mismo formato; en ellos `correlation_id` vale `-` porque no pertenecen
+a un request HTTP.
 
 ### Verificacion
 
-Este servicio no realiza llamadas a `notif-svc`, por lo que la demostracion del
-circuit breaker y de la entrega de notificaciones pendientes se verifica desde
-`booking-svc` cuando se complete esa integracion.
+Levantar `users-svc` y consultar un endpoint sin enviar header:
+
+```powershell
+docker compose up --build -d users-db users-svc
+curl.exe -i http://localhost:8003/healthz
+docker compose logs --no-color --tail=30 users-svc
+```
+
+La respuesta debe incluir un header `x-correlation-id` con un UUID. En los
+logs, las lineas JSON de `request_started` y `request_completed` deben tener
+el mismo `correlation_id`.
+
+Repetir la prueba con un ID conocido:
+
+```powershell
+$correlationId = "demo-task3b-001"
+curl.exe -i http://localhost:8003/healthz -H "x-correlation-id: $correlationId"
+docker compose logs --no-color --tail=30 users-svc | Select-String $correlationId
+```
+
+La respuesta y ambos eventos del request deben mostrar
+`demo-task3b-001`. Para comprobar que el formato es JSON, copiar una linea
+del log y ejecutar:
+
+```powershell
+docker compose logs --no-color --tail=1 users-svc | ConvertFrom-Json
+```
+
+El objeto resultante debe mostrar los cinco campos requeridos. La propagacion
+entre `booking-svc` y `notif-svc` se verificara cuando se complete la
+integracion de esos servicios.
+
+### Video de demostración
+>
+> Video de verificacion de *Task3B*:
+>
+> [Ver demostracion en YouTube](https://youtu.be/mjTP9gy5nVM)
 
 ## Task 4 - Seguridad y configuracion
 
@@ -93,7 +138,7 @@ La conexion a PostgreSQL y la firma del JWT se configuran mediante variables de
 entorno. Los valores locales se guardan en `.env`, que no debe incluirse en el
 repositorio.
 
-## Verificacion del Task 1
+### Verificacion del Task 1
 
 ```bash
 curl http://localhost:8003/healthz

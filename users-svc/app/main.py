@@ -1,8 +1,13 @@
+import contextvars
+import json
 import logging
 import os
+import time
+import uuid
+from datetime import datetime, timezone
 
 import requests
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import engine, Base, get_db
@@ -11,8 +16,52 @@ from app import models, schemas, auth
 Base.metadata.create_all(bind=engine)
 app = FastAPI(title="users-svc")
 
-logging.basicConfig(level=logging.INFO)
+correlation_id_context = contextvars.ContextVar("correlation_id", default="-")
+
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        log_entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "service": "users-svc",
+            "event": record.getMessage(),
+            "correlation_id": correlation_id_context.get(),
+        }
+        return json.dumps(log_entry, ensure_ascii=True)
+
+
 logger = logging.getLogger("users-svc")
+logger.setLevel(logging.INFO)
+logger.propagate = False
+handler = logging.StreamHandler()
+handler.setFormatter(JsonFormatter())
+logger.handlers = [handler]
+
+
+# El contexto se mantiene aislado para que requests concurrentes no mezclen sus IDs.
+@app.middleware("http")
+async def correlation_middleware(request: Request, call_next):
+    correlation_id = request.headers.get("x-correlation-id") or str(uuid.uuid4())
+    token = correlation_id_context.set(correlation_id)
+    started_at = time.perf_counter()
+    try:
+        logger.info("request_started method=%s path=%s", request.method, request.url.path)
+        response = await call_next(request)
+        logger.info(
+            "request_completed method=%s path=%s status_code=%s duration_ms=%.2f",
+            request.method,
+            request.url.path,
+            response.status_code,
+            (time.perf_counter() - started_at) * 1000,
+        )
+        response.headers["x-correlation-id"] = correlation_id
+        return response
+    except Exception:
+        logger.exception("request_failed method=%s path=%s", request.method, request.url.path)
+        raise
+    finally:
+        correlation_id_context.reset(token)
 
 def get_env_str(name: str, default: str) -> str:
     value = os.getenv(name)
