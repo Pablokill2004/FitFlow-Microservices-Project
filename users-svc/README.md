@@ -132,11 +132,51 @@ El login genera un JWT firmado. El token incluye el identificador del usuario
 en el campo `user_id`, para que otros servicios puedan validar la identidad en
 los endpoints protegidos.
 
+El servicio requiere `JWT_SECRET` al iniciar. No existe una clave por defecto
+en el codigo. `ALGORITHM` define el algoritmo de firma y debe tener el mismo
+valor en `users-svc` y `booking-svc`.
+
 ### Variables sensibles
 
 La conexion a PostgreSQL y la firma del JWT se configuran mediante variables de
 entorno. Los valores locales se guardan en `.env`, que no debe incluirse en el
-repositorio.
+repositorio. `.gitignore` excluye `.env`; `.env.example` solo contiene nombres
+de variables y valores de ejemplo que deben reemplazarse localmente.
+
+### Rotacion de credenciales
+
+Realizar la rotacion en una ventana controlada y conservar temporalmente la
+credencial anterior para no interrumpir las conexiones existentes:
+
+1. Generar un nuevo valor aleatorio para `JWT_SECRET` y nuevas contrasenas para
+  las bases de datos. No usar valores del README ni del repositorio.
+2. Cambiar la contrasena del usuario de PostgreSQL con una cuenta administradora:
+
+  ```bash
+  docker compose exec users-db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+    -c "ALTER ROLE users_admin WITH PASSWORD 'NUEVA_PASSWORD';"
+  ```
+
+  En PowerShell, usar el mismo comando reemplazando las variables por sus
+  valores reales. La base de datos permanece disponible mientras se actualiza.
+3. Actualizar en `.env` `POSTGRES_PASSWORD`, `DATABASE_URL` y `JWT_SECRET`.
+  Mantener el mismo `JWT_SECRET` en `booking-svc`; los tokens emitidos antes
+  de la rotacion dejaran de ser validos, por lo que los clientes deben iniciar
+  sesion nuevamente.
+4. Validar la configuracion en una instancia de reemplazo con `/healthz` y
+  `/readyz`, y sustituir la instancia anterior de forma gradual. En un entorno
+  con balanceador, retirar la instancia anterior solo despues de comprobar la
+  nueva. Asi no se interrumpe el servicio mientras se rota la credencial.
+5. Eliminar la credencial anterior y verificar que `.env` siga ignorado:
+
+  ```bash
+  git check-ignore .env
+  git grep -n -i "change-me\|secret" -- ':!.env.example' ':!.env'
+  ```
+
+Para un entorno local con una sola instancia, el paso 4 implica recrear el
+contenedor y puede producir una interrupcion breve. La rotacion sin downtime
+requiere ejecutar dos instancias detras de un balanceador.
 
 ### Verificacion del Task 1
 
@@ -156,18 +196,22 @@ Ambos endpoints deben responder:
 Registrar un usuario:
 
 ```powershell
-curl.exe -X POST http://localhost:8003/users/register `
-  -H "Content-Type: application/json" `
-  -d '{"email":"ana@example.com","password":"Secret123!","full_name":"Ana Lopez"}'
+$registerBody = @{ email = "ana@example.com"; password = "Secret123!"; full_name = "Ana Lopez" } | ConvertTo-Json
+Invoke-RestMethod -Uri http://localhost:8003/users/register -Method Post `
+  -ContentType "application/json" -Body $registerBody
 ```
 
 Iniciar sesion para obtener el JWT:
 
 ```powershell
-curl.exe -X POST http://localhost:8003/users/login `
-  -H "Content-Type: application/json" `
-  -d '{"email":"ana@example.com","password":"Secret123!"}'
+$loginBody = @{ email = "ana@example.com"; password = "Secret123!" } | ConvertTo-Json
+Invoke-RestMethod -Uri http://localhost:8003/users/login -Method Post `
+  -ContentType "application/json" -Body $loginBody
 ```
+
+La respuesta contiene `access_token`. Para comprobar el requisito de Task 4A,
+decodificar el token sin verificar la firma y confirmar que el payload incluye
+`user_id`; la firma siempre debe verificarse usando `JWT_SECRET`.
 
 Con el `id` devuelto al registrar el usuario, consultar su perfil:
 

@@ -51,6 +51,38 @@ curl http://localhost:8001/readyz
 
 La UI de Consul queda disponible en `http://localhost:8500`.
 
+### Recursos de Docker Compose
+
+`docker compose up --build -d` construye o actualiza las imagenes de
+`users-svc`, `booking-svc` y `notif-svc`, y ejecuta 7 contenedores:
+
+- `users-svc`, `booking-svc` y `notif-svc`.
+- `users-db`, `booking-db` y `notif-db` (PostgreSQL independiente).
+- `consul` para el registro de servicios.
+
+Tambien crea o reutiliza los volumenes `users_db_data`, `booking_db_data` y
+`notif_db_data`. Los volumenes conservan los datos aunque se detengan los
+contenedores.
+
+Al terminar el trabajo, detener los contenedores con:
+
+```bash
+docker compose down
+```
+
+Este comando elimina los contenedores y la red del proyecto, pero conserva las
+imagenes y los datos de las bases. Para volver a trabajar, ejecutar de nuevo
+`docker compose up -d`.
+
+Solo si se desea borrar tambien los datos persistentes:
+
+```bash
+docker compose down -v
+```
+
+`down -v` elimina los tres volumenes y toda la informacion almacenada en las
+bases de datos. Para revisar el estado actual, usar `docker compose ps`.
+
 Para probar el flujo completo de cada servicio, consulta su README:
 [users-svc](users-svc/README.md) · [booking-svc](booking-svc/README.md) ·
 [notif-svc](notif-svc/README.md).
