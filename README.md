@@ -9,10 +9,9 @@ principio **Database per Service**.
 - [booking-svc](booking-svc/README.md): implementacion del servicio de reservas.
 - [notif-svc](notif-svc/README.md): implementacion del servicio de notificaciones.
 
-## Estado: Checkpoint 1
+## Estado actual
 
-En este checkpoint se documentan y validan los microservicios implementados
-hasta ahora:
+Se documentan y validan los microservicios implementados hasta ahora:
 
 | Servicio | Puerto | Responsabilidad | Documentacion |
 | --- | ---: | --- | --- |
@@ -24,9 +23,16 @@ Los 3 microservicios del proyecto ya corren con `docker compose up --build`.
 Cada servicio usa PostgreSQL dedicado (`users-db`, `booking-db`, `notif-db`)
 y se levanta mediante el `docker-compose.yml` de la raiz, que tambien incluye
 un contenedor de **Consul** (modo dev) accesible en `http://localhost:8500`.
-El auto-registro de los servicios en Consul corresponde a la Fase 2 (Task 2A)
-y aun no esta implementado. El servidor **MCP** corresponde a etapas
-posteriores y se incorporara al repositorio conforme avance el proyecto.
+
+Avance en service discovery:
+
+- `users-svc` se registra automaticamente en Consul al iniciar.
+- `users-svc` publica health check HTTP con intervalo de 10 segundos y
+	desregistro automatico tras 30 segundos en estado critico.
+- El flujo de desregistro de `users-svc` se ejecuta al apagar el servicio.
+
+El servidor **MCP** corresponde a etapas posteriores y se incorporara al
+repositorio conforme avance el proyecto.
 
 ## Inicio rapido
 
@@ -44,6 +50,38 @@ curl http://localhost:8001/readyz
 ```
 
 La UI de Consul queda disponible en `http://localhost:8500`.
+
+### Recursos de Docker Compose
+
+`docker compose up --build -d` construye o actualiza las imagenes de
+`users-svc`, `booking-svc` y `notif-svc`, y ejecuta 7 contenedores:
+
+- `users-svc`, `booking-svc` y `notif-svc`.
+- `users-db`, `booking-db` y `notif-db` (PostgreSQL independiente).
+- `consul` para el registro de servicios.
+
+Tambien crea o reutiliza los volumenes `users_db_data`, `booking_db_data` y
+`notif_db_data`. Los volumenes conservan los datos aunque se detengan los
+contenedores.
+
+Al terminar el trabajo, detener los contenedores con:
+
+```bash
+docker compose down
+```
+
+Este comando elimina los contenedores y la red del proyecto, pero conserva las
+imagenes y los datos de las bases. Para volver a trabajar, ejecutar de nuevo
+`docker compose up -d`.
+
+Solo si se desea borrar tambien los datos persistentes:
+
+```bash
+docker compose down -v
+```
+
+`down -v` elimina los tres volumenes y toda la informacion almacenada en las
+bases de datos. Para revisar el estado actual, usar `docker compose ps`.
 
 Para probar el flujo completo de cada servicio, consulta su README:
 [users-svc](users-svc/README.md) · [booking-svc](booking-svc/README.md) ·

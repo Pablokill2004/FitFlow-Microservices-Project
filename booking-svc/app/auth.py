@@ -2,8 +2,12 @@ import os
 import jwt
 from fastapi import Header, HTTPException
 
-SECRET_KEY = os.getenv("JWT_SECRET", "secret")
+SECRET_KEY = os.getenv("JWT_SECRET")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+# booking-svc debe compartir la clave configurada con users-svc.
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET must be configured in the environment")
 
 def get_current_user_id(authorization: str = Header(None)) -> int:
     if authorization is None or not authorization.startswith("Bearer "):

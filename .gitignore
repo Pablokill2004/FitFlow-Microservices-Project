@@ -1,2 +1,6 @@
 # ignore env variables
 .env
+
+# unnecessary files
+FitFlow_Distribucion_de_Tareas.md
+FitFlow-Instrucciones-Generales.md
