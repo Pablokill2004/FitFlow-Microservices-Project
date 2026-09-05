@@ -27,12 +27,33 @@ un contenedor de **Consul** (modo dev) accesible en `http://localhost:8500`.
 
 Avance en service discovery:
 
-- `users-svc` y `notif-svc` se registran automaticamente en Consul al
-  iniciar (cada uno con sus propias variables `CONSUL_SERVICE_*` /
-  `NOTIF_CONSUL_*` para no chocar entre si).
-- Ambos publican health check HTTP con intervalo de 10 segundos y
-	desregistro automatico tras 30 segundos en estado critico, y se
-	desregistran al apagarse.
+- `users-svc`, `booking-svc` y `notif-svc` se registran automaticamente en
+  Consul al iniciar (cada uno con sus propias variables `CONSUL_SERVICE_*`,
+  `BOOKING_CONSUL_*` y `NOTIF_CONSUL_*` para no chocar entre si).
+- Los tres publican health check HTTP con intervalo de 10 segundos y
+  desregistro automatico tras 30 segundos en estado critico, y se
+  desregistran al apagarse.
+- `booking-svc` consulta a Consul la direccion de `notif-svc` antes de cada
+  notificacion. No tiene la URL escrita en el codigo.
+
+Avance en resiliencia (booking-svc -> notif-svc):
+
+- Timeout de 2 segundos, hasta 3 reintentos con backoff exponencial y
+  jitter, y circuit breaker (3 fallos abren el circuito por 30 segundos).
+- Outbox pattern: la notificacion se guarda en `booking-db` y, si notif-svc
+  esta caido, queda pendiente. La reserva responde 201 igual. Un hilo en
+  segundo plano reenvia las pendientes cuando notif-svc vuelve.
+- `GET http://localhost:8001/resilience/status` muestra el estado del
+  circuit breaker y del outbox. Ver [booking-svc/README.md](booking-svc/README.md)
+  para la demo paso a paso.
+
+Avance en observabilidad y seguridad:
+
+- Los tres servicios escriben logs JSON con `correlation_id`, `service`,
+  `event`, `level` y `timestamp`. `booking-svc` propaga el mismo
+  `x-correlation-id` a `notif-svc` y agrega el `user_id` del JWT.
+- `booking-svc` valida el JWT que emite `users-svc` y responde 401 si falta,
+  es invalido o expiro. `JWT_SECRET` y los passwords de BD viven en `.env`.
 
 El servidor **MCP** (`fitflow-mcp`) ya esta implementado con 4 herramientas
 (`login`, `get_available_classes`, `create_booking`, `cancel_booking`) y se

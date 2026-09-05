@@ -97,9 +97,23 @@ services:
       - DATABASE_URL=${BOOKING_DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - ALGORITHM=${ALGORITHM}
+      - CONSUL_HOST=${CONSUL_HOST:-consul}
+      - CONSUL_PORT=${CONSUL_PORT:-8500}
+      - BOOKING_CONSUL_SERVICE_NAME=${BOOKING_CONSUL_SERVICE_NAME:-booking-svc}
+      - BOOKING_CONSUL_SERVICE_ID=${BOOKING_CONSUL_SERVICE_ID:-booking-svc-8001}
+      - BOOKING_CONSUL_SERVICE_ADDRESS=${BOOKING_CONSUL_SERVICE_ADDRESS:-booking-svc}
+      - BOOKING_CONSUL_SERVICE_PORT=${BOOKING_CONSUL_SERVICE_PORT:-8001}
+      - BOOKING_CONSUL_HEALTH_PATH=${BOOKING_CONSUL_HEALTH_PATH:-/healthz}
+      # notif-svc se resuelve via Consul; el fallback solo aplica si Consul no responde.
+      - NOTIF_SERVICE_NAME=${NOTIF_SERVICE_NAME:-notif-svc}
+      - NOTIF_SVC_FALLBACK_URL=${NOTIF_SVC_FALLBACK_URL:-http://notif-svc:8002}
+    # No depende de notif-svc a proposito: booking-svc debe arrancar y responder
+    # aunque notif-svc este caido (Task 3A).
     depends_on:
       booking-db:
         condition: service_healthy
+      consul:
+        condition: service_started
 
   consul:
     image: hashicorp/consul:1.17
