@@ -60,9 +60,18 @@ services:
       - "8002:8002"
     environment:
       - DATABASE_URL=${NOTIF_DATABASE_URL}
+      - CONSUL_HOST=${CONSUL_HOST:-consul}
+      - CONSUL_PORT=${CONSUL_PORT:-8500}
+      - NOTIF_CONSUL_SERVICE_NAME=${NOTIF_CONSUL_SERVICE_NAME:-notif-svc}
+      - NOTIF_CONSUL_SERVICE_ID=${NOTIF_CONSUL_SERVICE_ID:-notif-svc-8002}
+      - NOTIF_CONSUL_SERVICE_ADDRESS=${NOTIF_CONSUL_SERVICE_ADDRESS:-notif-svc}
+      - NOTIF_CONSUL_SERVICE_PORT=${NOTIF_CONSUL_SERVICE_PORT:-8002}
+      - NOTIF_CONSUL_HEALTH_PATH=${NOTIF_CONSUL_HEALTH_PATH:-/healthz}
     depends_on:
       notif-db:
         condition: service_healthy
+      consul:
+        condition: service_started
 
   booking-db:
     image: postgres:15-alpine
