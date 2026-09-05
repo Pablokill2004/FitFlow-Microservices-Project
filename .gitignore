@@ -1,6 +1,10 @@
 # ignore env variables
 .env
 
+# python virtual environments (fitflow-mcp)
+.venv/
+__pycache__/
+
 # unnecessary files
 FitFlow_Distribucion_de_Tareas.md
 FitFlow-Instrucciones-Generales.md

@@ -8,6 +8,7 @@ principio **Database per Service**.
 - [users-svc](users-svc/README.md): implementacion del servicio de usuarios.
 - [booking-svc](booking-svc/README.md): implementacion del servicio de reservas.
 - [notif-svc](notif-svc/README.md): implementacion del servicio de notificaciones.
+- [fitflow-mcp](fitflow-mcp/README.md): servidor MCP conectado a Claude Desktop.
 
 ## Estado actual
 
@@ -26,13 +27,17 @@ un contenedor de **Consul** (modo dev) accesible en `http://localhost:8500`.
 
 Avance en service discovery:
 
-- `users-svc` se registra automaticamente en Consul al iniciar.
-- `users-svc` publica health check HTTP con intervalo de 10 segundos y
-	desregistro automatico tras 30 segundos en estado critico.
-- El flujo de desregistro de `users-svc` se ejecuta al apagar el servicio.
+- `users-svc` y `notif-svc` se registran automaticamente en Consul al
+  iniciar (cada uno con sus propias variables `CONSUL_SERVICE_*` /
+  `NOTIF_CONSUL_*` para no chocar entre si).
+- Ambos publican health check HTTP con intervalo de 10 segundos y
+	desregistro automatico tras 30 segundos en estado critico, y se
+	desregistran al apagarse.
 
-El servidor **MCP** corresponde a etapas posteriores y se incorporara al
-repositorio conforme avance el proyecto.
+El servidor **MCP** (`fitflow-mcp`) ya esta implementado con 4 herramientas
+(`login`, `get_available_classes`, `create_booking`, `cancel_booking`) y se
+conecta a Claude Desktop como proceso local. Ver
+[fitflow-mcp/README.md](fitflow-mcp/README.md) para el detalle.
 
 ## Inicio rapido
 
@@ -85,4 +90,4 @@ bases de datos. Para revisar el estado actual, usar `docker compose ps`.
 
 Para probar el flujo completo de cada servicio, consulta su README:
 [users-svc](users-svc/README.md) · [booking-svc](booking-svc/README.md) ·
-[notif-svc](notif-svc/README.md).
+[notif-svc](notif-svc/README.md) · [fitflow-mcp](fitflow-mcp/README.md).
