@@ -9,6 +9,7 @@ principio **Database per Service**.
 - [booking-svc](booking-svc/README.md): implementacion del servicio de reservas.
 - [notif-svc](notif-svc/README.md): implementacion del servicio de notificaciones.
 - [fitflow-mcp](fitflow-mcp/README.md): servidor MCP conectado a Claude Desktop.
+- [booking-agent](booking-agent/README.md): agente A2A para operaciones de reservas.
 
 ## Estado actual
 
@@ -60,7 +61,7 @@ El servidor **MCP** (`fitflow-mcp`) ya esta implementado con 4 herramientas
 conecta a Claude Desktop como proceso local. Ver
 [fitflow-mcp/README.md](fitflow-mcp/README.md) para el detalle.
 
-## Inicio rapido
+## Cómo correr el proyecto
 
 Requisito: Docker Desktop con Docker Compose v2.
 
@@ -75,16 +76,61 @@ curl http://localhost:8001/healthz
 curl http://localhost:8001/readyz
 ```
 
-La UI de Consul queda disponible en `http://localhost:8500`.
+La UI de Consul queda disponible en `http://localhost:8500`. El Booking Agent
+publica su Agent Card en `http://localhost:9001/.well-known/agent.json`.
 
 ### Recursos de Docker Compose
 
 `docker compose up --build -d` construye o actualiza las imagenes de
 `users-svc`, `booking-svc` y `notif-svc`, y ejecuta 7 contenedores:
 
-- `users-svc`, `booking-svc` y `notif-svc`.
+- `users-svc`, `booking-svc`, `notif-svc` y `booking-agent`.
 - `users-db`, `booking-db` y `notif-db` (PostgreSQL independiente).
 - `consul` para el registro de servicios.
+
+## Arquitectura
+
+```text
+         +----------------------+
+         | Orchestrator Agent   |
+         +----------+-----------+
+            | A2A / Agent Cards
+         +----------v-----------+
+         | Booking Agent :9001  |
+         +----------+-----------+
+            | MCP (stdio)
+         +----------v-----------+
+         | booking-svc :8001    |
+         +----------+-----------+
+            | HTTP + outbox
+         +----------v-----------+
+         | notif-svc :8002      |
+         +----------------------+
+
+ users-svc :8003 <----- JWT ---- booking-svc
+   ^                    ^
+   |                    |
+   +------ Consul :8500-+
+```
+
+Los microservicios mantienen una base de datos independiente. Consul permite
+descubrir servicios sanos. MCP conecta un agente con herramientas del sistema;
+A2A permite que el Orchestrator descubra y delegue tareas a agentes
+especializados mediante Agent Cards.
+
+## Agent-to-Agent
+
+El Booking Agent publica sus capacidades en `/.well-known/agent.json` y acepta
+tareas en `POST /a2a/tasks`. Para `create_booking` recibe `class_id` y para
+`cancel_booking` recibe `booking_id`; ambos requieren el JWT del usuario en
+`access_token`. El agente abre una sesión MCP y delega la operación a
+`booking-svc`, por lo que no accede directamente a la base de datos.
+
+El Orchestrator debe descubrir el Agent Card y enviar una tarea como esta:
+
+```json
+{"skill":"create_booking","class_id":1,"access_token":"<JWT>"}
+```
 
 Tambien crea o reutiliza los volumenes `users_db_data`, `booking_db_data` y
 `notif_db_data`. Los volumenes conservan los datos aunque se detengan los

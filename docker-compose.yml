@@ -115,6 +115,23 @@ services:
       consul:
         condition: service_started
 
+  booking-agent:
+    build:
+      context: .
+      dockerfile: booking-agent/Dockerfile
+    ports:
+      - "9001:9001"
+    environment:
+      - CONSUL_HOST=${CONSUL_HOST:-consul}
+      - CONSUL_PORT=${CONSUL_PORT:-8500}
+      - FITFLOW_SERVICE_HOST=${FITFLOW_SERVICE_HOST:-booking-svc}
+      - AGENT_PUBLIC_URL=${BOOKING_AGENT_PUBLIC_URL:-http://booking-agent:9001}
+    depends_on:
+      booking-svc:
+        condition: service_started
+      consul:
+        condition: service_started
+
   consul:
     image: hashicorp/consul:1.17
     ports:
