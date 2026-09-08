@@ -22,6 +22,7 @@ mcp = FastMCP("fitflow-mcp")
 
 CONSUL_HOST = os.getenv("CONSUL_HOST", "localhost")
 CONSUL_PORT = int(os.getenv("CONSUL_PORT", "8500"))
+FITFLOW_SERVICE_HOST = os.getenv("FITFLOW_SERVICE_HOST", "localhost")
 
 # Sesion en memoria del proceso MCP: se llena con la herramienta `login` y la
 # usan create_booking/cancel_booking. Vive solo mientras corre este proceso.
@@ -40,12 +41,12 @@ def resolve_service_base_url(service_name: str, fallback_port: int) -> str:
         if instances:
             port = instances[0]["Service"]["Port"]
             logger.info("resolved %s via Consul on port %s", service_name, port)
-            return f"http://localhost:{port}"
+            return f"http://{FITFLOW_SERVICE_HOST}:{port}"
     except requests.RequestException as exc:
         logger.warning("Consul lookup failed for %s: %s", service_name, exc)
 
     logger.info("using fallback port %s for %s (not registered/healthy in Consul)", fallback_port, service_name)
-    return f"http://localhost:{fallback_port}"
+    return f"http://{FITFLOW_SERVICE_HOST}:{fallback_port}"
 
 
 def _users_svc_url() -> str:
@@ -57,9 +58,10 @@ def _booking_svc_url() -> str:
 
 
 def _auth_headers() -> dict:
-    if not _session["token"]:
+    token = _session["token"] or os.getenv("FITFLOW_ACCESS_TOKEN")
+    if not token:
         raise RuntimeError("Debes iniciar sesion primero usando la herramienta 'login'.")
-    return {"Authorization": f"Bearer {_session['token']}"}
+    return {"Authorization": f"Bearer {token}"}
 
 
 @mcp.tool()
