@@ -57,6 +57,10 @@ def _booking_svc_url() -> str:
     return resolve_service_base_url("booking-svc", 8001)
 
 
+def _notif_svc_url() -> str:
+    return resolve_service_base_url("notif-svc", 8002)
+
+
 def _auth_headers() -> dict:
     token = _session["token"] or os.getenv("FITFLOW_ACCESS_TOKEN")
     if not token:
@@ -113,6 +117,16 @@ def cancel_booking(booking_id: int) -> dict:
         raise RuntimeError("Sesion invalida o expirada. Vuelve a usar la herramienta 'login'.")
     resp.raise_for_status()
     logger.info("booking cancelled via MCP booking_id=%s", booking_id)
+    return resp.json()
+
+
+@mcp.tool()
+def send_notification(user_id: int, message: str) -> dict:
+    """Envia una notificacion a un usuario a traves de notif-svc. No requiere sesion."""
+    url = f"{_notif_svc_url()}/notifications"
+    resp = requests.post(url, json={"user_id": user_id, "message": message}, timeout=5)
+    resp.raise_for_status()
+    logger.info("notification sent via MCP user_id=%s", user_id)
     return resp.json()
 
 
