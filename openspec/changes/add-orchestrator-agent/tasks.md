@@ -64,7 +64,7 @@
 ## 9. End-to-end verification through Claude Desktop
 
 - [ ] 9.1 Register `orchestrator-mcp` in Claude Desktop's config following the `fitflow-mcp/README.md` pattern (absolute venv python + absolute `server.py` path), with `fitflow` disconnected per design decision 8; verify after a full restart that Claude Desktop lists all four orchestrator tools
-- [ ] 9.2 Run the rubric flow: log in through the session, then type "Reserva yoga para el viernes y avísame"; verify the session calls `discover_agents` and `list_classes`, submits a two-step plan, and both steps report `succeeded`
+- [ ] 9.2 Run the rubric flow: log in through the session, then type "Reserva la clase de yoga y avísame" (reworded from the rubric's "para el viernes": yoga seeds at now+1 day, so a Friday yoga class only exists if the stack was first started on a Thursday); verify the session calls `discover_agents` and `list_classes`, submits a two-step plan, and both steps report `succeeded`
 - [ ] 9.3 Confirm the A2A path was actually taken and not shadowed by a direct tool — verify the run's correlation id appears in `docker compose logs booking-agent` and `notification-agent`, which only happens if the delegation went through A2A
 - [ ] 9.4 Verify a natural-language cancel instruction in the same session produces a `cancel_booking` step that succeeds
 - [ ] 9.5 Verify an out-of-scope instruction ("cámbiame la contraseña") does not fabricate a delegation — the session reports that no discovered skill covers it, or the orchestrator returns 422
@@ -85,8 +85,9 @@
 > whose verification depends on one id spanning all five containers. Touches Estudiante 1's and
 > Estudiante 3's files — additive only, no contract changes.
 
-- [ ] 11.1 Add the project's JSON logging to `booking-agent` and `notification-agent` — port `observability.py` with `SERVICE_NAME` set to each agent's own name and register the correlation middleware; verify each agent's container logs are JSON carrying `service` and `correlation_id`
-- [ ] 11.2 Have both agents pass the incoming `x-correlation-id` into the MCP subprocess they spawn, via an env var alongside the `FITFLOW_ACCESS_TOKEN` they already inject; verify the variable reaches the subprocess environment
-- [ ] 11.3 Make `fitflow-mcp/server.py` read that env var and send `x-correlation-id` on every downstream HTTP call to `users-svc`/`booking-svc`/`notif-svc`; verify no MCP tool signature changes so Claude Desktop's Task 2B usage is unaffected
-- [ ] 11.4 Verify end to end that one id spans all five containers: run a two-step plan through the orchestrator and grep the single correlation id across `orchestrator-agent`, `booking-agent`, `notification-agent`, `booking-svc`, and `notif-svc` logs
-- [ ] 11.5 Verify no regression for the standalone MCP path: with no correlation env var set, `fitflow-mcp` still works unchanged under direct invocation (the Task 2B behaviour Estudiante 3 owns)
+- [x] 11.1 Add the project's JSON logging to `booking-agent` and `notification-agent` — port `observability.py` with `SERVICE_NAME` set to each agent's own name and register the correlation middleware; verify each agent's container logs are JSON carrying `service` and `correlation_id`
+- [x] 11.2 Have both agents pass the incoming `x-correlation-id` into the MCP subprocess they spawn, via an env var alongside the `FITFLOW_ACCESS_TOKEN` they already inject; verify the variable reaches the subprocess environment
+- [x] 11.3 Make `fitflow-mcp/server.py` read that env var and send `x-correlation-id` on every downstream HTTP call to `users-svc`/`booking-svc`/`notif-svc`; verify no MCP tool signature changes so Claude Desktop's Task 2B usage is unaffected
+- [x] 11.4 Verify end to end that one id spans all five containers: run a two-step plan through the orchestrator and grep the single correlation id across `orchestrator-agent`, `booking-agent`, `notification-agent`, `booking-svc`, and `notif-svc` logs
+- [x] 11.5 Verify no regression for the standalone MCP path: with no correlation env var set, `fitflow-mcp` still works unchanged under direct invocation (the Task 2B behaviour Estudiante 3 owns)
+- [x] 11.6 Fix the error masking in `booking-agent` (and `notification-agent` if it shares the pattern): `HTTPException` raised inside the anyio `TaskGroup` of the MCP client is wrapped in an `ExceptionGroup` and surfaces as a bare 500, so "class full" / "already booked" all read as `Internal Server Error` in the orchestrator's step report; catch and re-raise outside the async context. Verify that a full class and a duplicate booking each produce their real message in the orchestrator's report

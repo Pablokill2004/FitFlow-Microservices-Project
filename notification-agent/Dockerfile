@@ -4,6 +4,7 @@ WORKDIR /app
 COPY notification-agent/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY notification-agent/app.py .
+COPY notification-agent/observability.py .
 COPY fitflow-mcp/server.py /opt/fitflow-mcp/server.py
 
 EXPOSE 9002

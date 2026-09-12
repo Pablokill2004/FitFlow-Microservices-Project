@@ -33,8 +33,18 @@ The natural-language instruction SHALL be interpreted by the Claude Desktop sess
 
 #### Scenario: Book a class and notify in one instruction
 
-- **WHEN** the user types "Reserva yoga para el viernes y avísame" in a Claude Desktop session with the orchestrator MCP server connected and is logged in
-- **THEN** the session resolves the yoga class scheduled on Friday to its current `class_id` from the live catalogue and submits a two-step plan whose steps are `create_booking` for that class and `send_notification`, and both steps report success
+- **WHEN** the user types "Reserva la clase de yoga y avísame" in a Claude Desktop session with the orchestrator MCP server connected and is logged in
+- **THEN** the session resolves yoga to its current `class_id` from the live catalogue and submits a two-step plan whose steps are `create_booking` for that class and `send_notification`, and both steps report success
+
+> The rubric's literal phrase is "Reserva yoga para el viernes y avísame", but `booking-svc` seeds
+> yoga at `now + 1 day` on every fresh volume, so a Friday yoga class exists only when the stack
+> was first started on a Thursday. The instruction is worded to resolve against the live catalogue
+> on any day; the delegation flow it exercises is identical.
+
+#### Scenario: Instruction names a weekday with no matching class
+
+- **WHEN** the user asks for a class on a weekday that the live catalogue has no session for
+- **THEN** the session reports that no matching class exists and submits no plan, rather than booking a different day
 
 #### Scenario: Cancel an existing booking
 
