@@ -132,6 +132,23 @@ services:
       consul:
         condition: service_started
 
+  notification-agent:
+    build:
+      context: .
+      dockerfile: notification-agent/Dockerfile
+    ports:
+      - "9002:9002"
+    environment:
+      - CONSUL_HOST=${CONSUL_HOST:-consul}
+      - CONSUL_PORT=${CONSUL_PORT:-8500}
+      - FITFLOW_SERVICE_HOST=${NOTIF_FITFLOW_SERVICE_HOST:-notif-svc}
+      - AGENT_PUBLIC_URL=${NOTIFICATION_AGENT_PUBLIC_URL:-http://notification-agent:9002}
+    depends_on:
+      notif-svc:
+        condition: service_started
+      consul:
+        condition: service_started
+
   consul:
     image: hashicorp/consul:1.17
     ports:
