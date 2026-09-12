@@ -39,14 +39,14 @@
 
 ## 6. The `orchestrator-mcp` server
 
-- [ ] 6.1 Create `orchestrator-mcp/` with `server.py`, `requirements.txt` (`mcp[cli]==1.29.1`, `requests==2.32.3` — matching the existing agents' pins), and `README.md`; verify `pip install -r orchestrator-mcp/requirements.txt` resolves
-- [ ] 6.2 Port the host-side address resolution from `fitflow-mcp/server.py` (Consul lookup for the port, `FITFLOW_SERVICE_HOST`/`localhost` for the host, published-port fallback) and add an `ORCHESTRATOR_URL` default of `http://localhost:9003`; verify resolution returns working URLs with the stack up
-- [ ] 6.3 Implement `login(email, password)` against `users-svc`, holding the JWT in process memory exactly as `fitflow-mcp` does; verify it returns a success message and that a later tool call reuses the token
-- [ ] 6.4 Implement `list_classes()` reading `booking-svc GET /classes` directly from the host (design decision 3 — keeps the container purely A2A); verify it returns the same ids as `curl localhost:8001/classes`
-- [ ] 6.5 Implement `discover_agents()` proxying the orchestrator's `GET /agents`; verify it returns both agents with their discovered skills
-- [ ] 6.6 Implement `orchestrate(instruction, steps)` posting to the orchestrator's `POST /orchestrate` with the stored JWT and a freshly generated `x-correlation-id`, returning the per-step report and that correlation id; verify a hand-written two-step plan executes end to end
-- [ ] 6.7 Surface an unreachable orchestrator as a tool error naming the failure rather than a fabricated success; verify that with the container stopped, `discover_agents` returns an explicit error
-- [ ] 6.8 Verify the tool schemas load: `python -c "import asyncio, server; asyncio.run(...)"` listing `server.mcp.list_tools()` shows all four tools with their parameters, following the pattern in `fitflow-mcp/README.md`
+- [x] 6.1 Create `orchestrator-mcp/` with `server.py`, `requirements.txt` (`mcp[cli]==1.29.1`, `requests==2.32.3` — matching the existing agents' pins), and `README.md`; verify `pip install -r orchestrator-mcp/requirements.txt` resolves
+- [x] 6.2 Port the host-side address resolution from `fitflow-mcp/server.py` (Consul lookup for the port, `FITFLOW_SERVICE_HOST`/`localhost` for the host, published-port fallback) and add an `ORCHESTRATOR_URL` default of `http://localhost:9003`; verify resolution returns working URLs with the stack up
+- [x] 6.3 Implement `login(email, password)` against `users-svc`, holding the JWT in process memory exactly as `fitflow-mcp` does; verify it returns a success message and that a later tool call reuses the token
+- [x] 6.4 Implement `list_classes()` reading `booking-svc GET /classes` directly from the host (design decision 3 — keeps the container purely A2A); verify it returns the same ids as `curl localhost:8001/classes`
+- [x] 6.5 Implement `discover_agents()` proxying the orchestrator's `GET /agents`; verify it returns both agents with their discovered skills
+- [x] 6.6 Implement `orchestrate(instruction, steps)` posting to the orchestrator's `POST /orchestrate` with the stored JWT and a freshly generated `x-correlation-id`, returning the per-step report and that correlation id; verify a hand-written two-step plan executes end to end
+- [x] 6.7 Surface an unreachable orchestrator as a tool error naming the failure rather than a fabricated success; verify that with the container stopped, `discover_agents` returns an explicit error
+- [x] 6.8 Verify the tool schemas load: `python -c "import asyncio, server; asyncio.run(...)"` listing `server.mcp.list_tools()` shows all four tools with their parameters, following the pattern in `fitflow-mcp/README.md`
 
 ## 7. Compose and configuration
 
