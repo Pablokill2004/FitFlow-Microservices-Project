@@ -4,22 +4,22 @@
 
 ## 1. Scaffold the orchestrator container
 
-- [ ] 1.1 Create `orchestrator-agent/` with `app.py`, `requirements.txt`, `Dockerfile`, `README.md`; verify `ls orchestrator-agent` shows all four files
-- [ ] 1.2 Pin `requirements.txt` to exact versions matching the other agents' style — `fastapi==0.110.0`, `uvicorn[standard]>=0.31.1,<1.0.0`, `httpx==<pinned>`, `pyjwt==<pinned>`. **No `anthropic` dependency.** Verify `pip install -r orchestrator-agent/requirements.txt` resolves in a scratch venv
-- [ ] 1.3 Write the Dockerfile modelled on `booking-agent/Dockerfile` but **without** copying `fitflow-mcp/server.py` (the container speaks A2A only — design decision 1), exposing 9003 and running uvicorn on that port; verify `docker build -f orchestrator-agent/Dockerfile .` succeeds
-- [ ] 1.4 Add a FastAPI app with `GET /healthz` returning `{"status":"ok"}` and `GET /.well-known/agent.json` returning the orchestrator's own card (name, description, url from `AGENT_PUBLIC_URL`, one orchestration skill); verify both endpoints respond when run locally with `uvicorn app:app --port 9003`
+- [x] 1.1 Create `orchestrator-agent/` with `app.py`, `requirements.txt`, `Dockerfile`, `README.md`; verify `ls orchestrator-agent` shows all four files
+- [x] 1.2 Pin `requirements.txt` to exact versions matching the other agents' style — `fastapi==0.110.0`, `uvicorn[standard]>=0.31.1,<1.0.0`, `httpx==<pinned>`, `pyjwt==<pinned>`. **No `anthropic` dependency.** Verify `pip install -r orchestrator-agent/requirements.txt` resolves in a scratch venv
+- [x] 1.3 Write the Dockerfile modelled on `booking-agent/Dockerfile` but **without** copying `fitflow-mcp/server.py` (the container speaks A2A only — design decision 1), exposing 9003 and running uvicorn on that port; verify `docker build -f orchestrator-agent/Dockerfile .` succeeds
+- [x] 1.4 Add a FastAPI app with `GET /healthz` returning `{"status":"ok"}` and `GET /.well-known/agent.json` returning the orchestrator's own card (name, description, url from `AGENT_PUBLIC_URL`, one orchestration skill); verify both endpoints respond when run locally with `uvicorn app:app --port 9003`
 
 ## 2. Observability and correlation ID
 
-- [ ] 2.1 Port `booking-svc/app/observability.py` into the orchestrator with `SERVICE_NAME = "orchestrator-agent"` (JSON formatter, `correlation_id` contextvar, `correlation_middleware`); verify a request to `/healthz` prints a JSON log line containing `"service":"orchestrator-agent"` and a `correlation_id`
-- [ ] 2.2 Register the middleware on the app and confirm it adopts an inbound `x-correlation-id` and generates one otherwise; verify `curl -H "x-correlation-id: demo-123" localhost:9003/healthz -i` echoes `x-correlation-id: demo-123` in the response headers, and a call without the header returns a generated UUID
+- [x] 2.1 Port `booking-svc/app/observability.py` into the orchestrator with `SERVICE_NAME = "orchestrator-agent"` (JSON formatter, `correlation_id` contextvar, `correlation_middleware`); verify a request to `/healthz` prints a JSON log line containing `"service":"orchestrator-agent"` and a `correlation_id`
+- [x] 2.2 Register the middleware on the app and confirm it adopts an inbound `x-correlation-id` and generates one otherwise; verify `curl -H "x-correlation-id: demo-123" localhost:9003/healthz -i` echoes `x-correlation-id: demo-123` in the response headers, and a call without the header returns a generated UUID
 
 ## 3. Agent Card discovery
 
-- [ ] 3.1 Read `AGENT_URLS` (comma-separated, default `http://booking-agent:9001,http://notification-agent:9002`) and implement discovery that fetches `/.well-known/agent.json` from each URL and builds a `skill_id -> agent` index **only** from `skills[].id` in the fetched cards, recording per-agent errors instead of raising; verify against both running agents that the index contains `create_booking`, `cancel_booking`, and `send_notification`
-- [ ] 3.2 Run discovery on FastAPI startup without letting a failure abort startup; verify the orchestrator still starts and serves `/healthz` when started with one agent stopped
-- [ ] 3.3 Add `GET /agents` returning each configured agent as discovered (name, url, skill ids) or unreachable (url, error); verify with both agents up, then with `docker compose stop notification-agent`, that the output reflects each state
-- [ ] 3.4 Add a single lazy re-discovery triggered when a submitted step names a skill missing from the index (design decision 2, guards the compose startup race); verify by starting the orchestrator with an agent down, bringing that agent up, and confirming a subsequent plan routes to it without a restart
+- [x] 3.1 Read `AGENT_URLS` (comma-separated, default `http://booking-agent:9001,http://notification-agent:9002`) and implement discovery that fetches `/.well-known/agent.json` from each URL and builds a `skill_id -> agent` index **only** from `skills[].id` in the fetched cards, recording per-agent errors instead of raising; verify against both running agents that the index contains `create_booking`, `cancel_booking`, and `send_notification`
+- [x] 3.2 Run discovery on FastAPI startup without letting a failure abort startup; verify the orchestrator still starts and serves `/healthz` when started with one agent stopped
+- [x] 3.3 Add `GET /agents` returning each configured agent as discovered (name, url, skill ids) or unreachable (url, error); verify with both agents up, then with `docker compose stop notification-agent`, that the output reflects each state
+- [x] 3.4 Add a single lazy re-discovery triggered when a submitted step names a skill missing from the index (design decision 2, guards the compose startup race); verify by starting the orchestrator with an agent down, bringing that agent up, and confirming a subsequent plan routes to it without a restart
 
 ## 4. Caller authentication and plan validation
 
