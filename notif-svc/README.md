@@ -71,8 +71,17 @@ La respuesta debe incluir el servicio `notif-svc` con un check en estado
 ## Task 2B — Servidor MCP (`fitflow-mcp`)
 
 Ver [fitflow-mcp/README.md](../fitflow-mcp/README.md) para la implementación
-completa del servidor MCP, sus 4 herramientas (`login`, `get_available_classes`,
-`create_booking`, `cancel_booking`) y cómo conectarlo a Claude Desktop.
+completa del servidor MCP, sus 5 herramientas (`login`, `get_available_classes`,
+`create_booking`, `cancel_booking`, `send_notification`) y cómo conectarlo a
+Claude Desktop.
+
+## Task 5 — Notification Agent
+
+`notif-svc` recibe las notificaciones tanto desde `fitflow-mcp` (Task 2B)
+como desde el agente A2A `notification-agent`, que delega la herramienta
+`send_notification` vía MCP embebido dentro de su propio contenedor. Ver
+[notification-agent/README.md](../notification-agent/README.md) para el
+Agent Card, el endpoint `POST /a2a/tasks` y la verificación end-to-end.
 
 ## Task 3 — Resiliencia y observabilidad
 
