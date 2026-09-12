@@ -5,6 +5,7 @@ COPY orchestrator-agent/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY orchestrator-agent/app.py .
 COPY orchestrator-agent/observability.py .
+COPY orchestrator-agent/auth.py .
 # No se copia fitflow-mcp/server.py: el orchestrator habla solo A2A y no
 # tiene cliente MCP propio (decision de diseno 1).
 

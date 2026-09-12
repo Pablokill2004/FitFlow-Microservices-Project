@@ -32,7 +32,7 @@ See `proposal.md` — Why. Design-relevant facts about the code and the requirem
 - A conversational orchestrator API. The container takes one plan, executes it, reports. Multi-turn conversation lives in Claude Desktop, which is where it belongs.
 - Parallel step execution, compensating transactions, or rollback of a partially executed plan.
 - Giving the orchestrator its own database. It is stateless.
-- Touching `fitflow-mcp`, the two existing agents, or any microservice.
+- Touching any microservice (`booking-svc`, `users-svc`, `notif-svc`). The two leaf agents and `fitflow-mcp` are touched **only** to close the correlation-ID chain (decision 10) — additively, changing no existing contract. Nothing else about them is in scope: their Agent Cards, task schemas, and MCP tool signatures stay exactly as they are.
 
 ## Decisions
 
@@ -115,6 +115,22 @@ Two new top-level sections in `README.md`:
 - **Agent-to-Agent: MCP vs A2A** — the conceptual distinction the rubric asks for. MCP is the vertical axis (a client reaching *down* to tools over stdio, one process per call); A2A is the horizontal axis (a peer reaching *across* to another agent over HTTP, discovered by Agent Card). This change makes the contrast unusually legible and the section should use it: `orchestrator-mcp` is MCP reaching down from Claude Desktop, the orchestrator→agents hop is A2A reaching across, and the leaf agents are where A2A turns back into MCP. Three layers, two protocols, one request.
 
 The architecture diagram's `Orchestrator Agent <- PENDIENTE` becomes the built container with its port, plus the Claude Desktop / MCP layer above it. The existing `## Agent-to-Agent` section is absorbed rather than left to drift alongside the new one.
+
+### 10. Closing the correlation-ID chain through the leaf agents
+
+Discovered during implementation, not at planning time: the correlation id **dies at the agents**. `booking-agent` and `notification-agent` accept `x-correlation-id` and echo it in their JSON *response body*, but they have no logging configuration at all — no `observability` import, no JSON formatter — so the id never appears in their container stdout. And `fitflow-mcp`'s `_auth_headers()` sends only `Authorization`, so `booking-svc`/`notif-svc` see no incoming id and generate fresh ones.
+
+That breaks the spec's "one id links the orchestrator, both agents, and both microservices", and it removes the only dependable proof that a Claude Desktop run actually went through A2A instead of a direct `fitflow-mcp` tool (decision 8's shadowing check).
+
+So three additive edits, outside this change's original blast radius:
+
+1. **Both leaf agents** get the project's `observability` module (the same `booking-svc` port, with their own `SERVICE_NAME`) and register the correlation middleware, so their own logs carry the id.
+2. **Both leaf agents** pass the incoming id into the MCP subprocess they spawn per request, via an environment variable alongside the `FITFLOW_ACCESS_TOKEN` they already inject.
+3. **`fitflow-mcp/server.py`** reads that variable and adds `x-correlation-id` to the headers of every downstream HTTP call, so `booking-svc` and `notif-svc` adopt it through the middleware they already run.
+
+Env-var injection is the right seam because it is the mechanism the agents already use to hand per-request state to the MCP subprocess — `FITFLOW_ACCESS_TOKEN` works exactly this way. No MCP tool signature changes, so `fitflow-mcp` keeps working unchanged under Claude Desktop for Task 2B.
+
+These are Estudiante 1's and Estudiante 3's deliverables. Nothing is removed or renamed and no existing behaviour changes: an agent with no incoming id behaves exactly as before. Worth raising with them at integration time rather than landing silently.
 
 ## Risks / Trade-offs
 

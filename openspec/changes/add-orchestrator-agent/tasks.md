@@ -23,19 +23,19 @@
 
 ## 4. Caller authentication and plan validation
 
-- [ ] 4.1 Validate the caller's `access_token` with `JWT_SECRET`/`ALGORITHM` using the same `pyjwt` decode and 401 mapping as `booking-svc/app/auth.py` (missing / malformed / expired / non-int `user_id` → 401), running **before** anything is executed; verify a plan submitted with an expired token returns 401 and produces no outbound call
-- [ ] 4.2 Define the `OrchestrateRequest` / `Step` Pydantic models — `{instruction, steps[], access_token}` with `Step{skill, class_id?, booking_id?, message?, reason?}` and **no `user_id` field on Step**; verify the models reject a malformed body with 422
-- [ ] 4.3 Reject the whole plan with 422 — executing nothing — when `steps` is empty or any step names a skill absent from the discovered index (after the lazy re-discovery from 3.4); verify a plan naming `change_password` returns 422 and sends no task, and that an empty `steps` list does the same
-- [ ] 4.4 Extract `user_id` from the token and override it on every `send_notification` step, ignoring any recipient the plan carried (design decision 5 — the plan is untrusted, model-generated input); verify a plan whose notification step names another user still notifies the token's `user_id`
+- [x] 4.1 Validate the caller's `access_token` with `JWT_SECRET`/`ALGORITHM` using the same `pyjwt` decode and 401 mapping as `booking-svc/app/auth.py` (missing / malformed / expired / non-int `user_id` → 401), running **before** anything is executed; verify a plan submitted with an expired token returns 401 and produces no outbound call
+- [x] 4.2 Define the `OrchestrateRequest` / `Step` Pydantic models — `{instruction, steps[], access_token}` with `Step{skill, class_id?, booking_id?, message?, reason?}` and **no `user_id` field on Step**; verify the models reject a malformed body with 422
+- [x] 4.3 Reject the whole plan with 422 — executing nothing — when `steps` is empty or any step names a skill absent from the discovered index (after the lazy re-discovery from 3.4); verify a plan naming `change_password` returns 422 and sends no task, and that an empty `steps` list does the same
+- [x] 4.4 Extract `user_id` from the token and override it on every `send_notification` step, ignoring any recipient the plan carried (design decision 5 — the plan is untrusted, model-generated input); verify a plan whose notification step names another user still notifies the token's `user_id`
 
 ## 5. Plan execution over A2A
 
-- [ ] 5.1 Implement `POST /orchestrate` wiring together auth (group 4), validation (4.3), and execution; verify it returns the echoed instruction, the executed plan, the correlation id, and a per-step report
-- [ ] 5.2 Build each A2A task body per target agent — booking steps send `{skill, class_id|booking_id, access_token}`, the notification step sends `{skill, user_id, message}` — since the two agents' schemas differ; verify both agents accept the bodies rather than returning 422
-- [ ] 5.3 Execute steps sequentially with `httpx` at a ~30 s timeout (the agents spawn an MCP subprocess per request), sending `x-correlation-id` on every call; verify the same id appears in `docker compose logs booking-agent notification-agent booking-svc notif-svc`
-- [ ] 5.4 Report every step as `{skill, status: "succeeded"|"failed"|"skipped", result|error}`, stopping at the first failure and marking the rest skipped; verify that booking a full class (Zumba, capacity 2) marks `create_booking` failed and `send_notification` skipped with no task sent to the Notification Agent
-- [ ] 5.5 Report a step whose target agent is unreachable as failed with the transport error attached, rather than raising a 500; verify by stopping `notification-agent` mid-plan that the response reports the failed step and the orchestrator stays healthy
-- [ ] 5.6 Log the originating `instruction` alongside the executed steps under the run's correlation id; verify the instruction text appears in `docker compose logs orchestrator-agent` for a run
+- [x] 5.1 Implement `POST /orchestrate` wiring together auth (group 4), validation (4.3), and execution; verify it returns the echoed instruction, the executed plan, the correlation id, and a per-step report
+- [x] 5.2 Build each A2A task body per target agent — booking steps send `{skill, class_id|booking_id, access_token}`, the notification step sends `{skill, user_id, message}` — since the two agents' schemas differ; verify both agents accept the bodies rather than returning 422
+- [x] 5.3 Execute steps sequentially with `httpx` at a ~30 s timeout (the agents spawn an MCP subprocess per request), sending `x-correlation-id` on every call; verify the same id appears in `docker compose logs booking-agent notification-agent booking-svc notif-svc`
+- [x] 5.4 Report every step as `{skill, status: "succeeded"|"failed"|"skipped", result|error}`, stopping at the first failure and marking the rest skipped; verify that booking a full class (Zumba, capacity 2) marks `create_booking` failed and `send_notification` skipped with no task sent to the Notification Agent
+- [x] 5.5 Report a step whose target agent is unreachable as failed with the transport error attached, rather than raising a 500; verify by stopping `notification-agent` mid-plan that the response reports the failed step and the orchestrator stays healthy
+- [x] 5.6 Log the originating `instruction` alongside the executed steps under the run's correlation id; verify the instruction text appears in `docker compose logs orchestrator-agent` for a run
 
 ## 6. The `orchestrator-mcp` server
 
@@ -76,3 +76,17 @@
 - [ ] 10.3 Document the Claude Desktop setup for the A2A demo, including the one-server-at-a-time rule and why it exists (`fitflow-mcp`'s direct tools would shadow the A2A path); verify a reader following the section reaches a working `discover_agents` call
 - [ ] 10.4 Update the architecture diagram to show `Orchestrator Agent :9003` as built (remove `<- PENDIENTE`) with the Claude Desktop / MCP layer above it, and add the orchestrator to the service table, the "Documentacion del proyecto" list, the healthcheck command list, and the container count in "Recursos de Docker Compose" (9 → 10); verify no `PENDIENTE` remains and every count and list mentions the orchestrator
 - [ ] 10.5 Write `orchestrator-agent/README.md` (endpoints, env vars, discovery, a `curl` plan example) and `orchestrator-mcp/README.md` (tools, Claude Desktop config, the shadowing caveat); verify each README's example reproduces the 8.1 and 9.2 results respectively
+
+## 11. Close the correlation-ID chain through the leaf agents
+
+> Added during implementation (design decision 10). Discovered that the correlation id dies at
+> the agents: they echo it in their response body but have no logging, and `fitflow-mcp` does not
+> forward it, so `booking-svc`/`notif-svc` generate fresh ids. Must be done before groups 8 and 9,
+> whose verification depends on one id spanning all five containers. Touches Estudiante 1's and
+> Estudiante 3's files — additive only, no contract changes.
+
+- [ ] 11.1 Add the project's JSON logging to `booking-agent` and `notification-agent` — port `observability.py` with `SERVICE_NAME` set to each agent's own name and register the correlation middleware; verify each agent's container logs are JSON carrying `service` and `correlation_id`
+- [ ] 11.2 Have both agents pass the incoming `x-correlation-id` into the MCP subprocess they spawn, via an env var alongside the `FITFLOW_ACCESS_TOKEN` they already inject; verify the variable reaches the subprocess environment
+- [ ] 11.3 Make `fitflow-mcp/server.py` read that env var and send `x-correlation-id` on every downstream HTTP call to `users-svc`/`booking-svc`/`notif-svc`; verify no MCP tool signature changes so Claude Desktop's Task 2B usage is unaffected
+- [ ] 11.4 Verify end to end that one id spans all five containers: run a two-step plan through the orchestrator and grep the single correlation id across `orchestrator-agent`, `booking-agent`, `notification-agent`, `booking-svc`, and `notif-svc` logs
+- [ ] 11.5 Verify no regression for the standalone MCP path: with no correlation env var set, `fitflow-mcp` still works unchanged under direct invocation (the Task 2B behaviour Estudiante 3 owns)
