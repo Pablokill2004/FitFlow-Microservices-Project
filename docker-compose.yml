@@ -149,6 +149,23 @@ services:
       consul:
         condition: service_started
 
+  orchestrator-agent:
+    build:
+      context: .
+      dockerfile: orchestrator-agent/Dockerfile
+    ports:
+      - "9003:9003"
+    environment:
+      - AGENT_URLS=${AGENT_URLS:-http://booking-agent:9001,http://notification-agent:9002}
+      - AGENT_PUBLIC_URL=${ORCHESTRATOR_AGENT_PUBLIC_URL:-http://orchestrator-agent:9003}
+      - JWT_SECRET=${JWT_SECRET}
+      - ALGORITHM=${ALGORITHM}
+    depends_on:
+      booking-agent:
+        condition: service_started
+      notification-agent:
+        condition: service_started
+
   consul:
     image: hashicorp/consul:1.17
     ports:

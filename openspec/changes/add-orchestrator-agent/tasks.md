@@ -50,16 +50,16 @@
 
 ## 7. Compose and configuration
 
-- [ ] 7.1 Add the `orchestrator-agent` service to `docker-compose.yml` (build `context: .` with `dockerfile: orchestrator-agent/Dockerfile`, port `9003:9003`, `depends_on` both agents) passing `AGENT_URLS`, `JWT_SECRET`, `ALGORITHM`, `AGENT_PUBLIC_URL`; verify `docker compose config` renders the service without error
-- [ ] 7.2 Add the new keys to `.env.example` with placeholder values; confirm **no API key of any kind** is introduced and `git diff` shows no secret staged
-- [ ] 7.3 Bring the whole stack up and confirm the three agent containers run together as the base document's checkpoint requires; verify `docker compose ps` shows `orchestrator-agent`, `booking-agent`, and `notification-agent` running, and `curl localhost:9003/healthz`, `curl localhost:9003/agents`, and `curl localhost:9003/.well-known/agent.json` all respond
+- [x] 7.1 Add the `orchestrator-agent` service to `docker-compose.yml` (build `context: .` with `dockerfile: orchestrator-agent/Dockerfile`, port `9003:9003`, `depends_on` both agents) passing `AGENT_URLS`, `JWT_SECRET`, `ALGORITHM`, `AGENT_PUBLIC_URL`; verify `docker compose config` renders the service without error
+- [x] 7.2 Add the new keys to `.env.example` with placeholder values; confirm **no API key of any kind** is introduced and `git diff` shows no secret staged
+- [x] 7.3 Bring the whole stack up and confirm the three agent containers run together as the base document's checkpoint requires; verify `docker compose ps` shows `orchestrator-agent`, `booking-agent`, and `notification-agent` running, and `curl localhost:9003/healthz`, `curl localhost:9003/agents`, and `curl localhost:9003/.well-known/agent.json` all respond
 
 ## 8. Container-level verification (no Claude Desktop)
 
-- [ ] 8.1 Register and log in a test user via `users-svc`, then `POST localhost:9003/orchestrate` with a hand-written two-step plan (`create_booking` + `send_notification`) and the JWT; verify both steps report `succeeded`, the booking exists in `booking-svc`, and the notification exists in `notif-svc`
-- [ ] 8.2 Verify correlation propagation for that run by grepping the one id across `orchestrator-agent`, `booking-agent`, `notification-agent`, `booking-svc`, and `notif-svc` logs
-- [ ] 8.3 Verify the cancel path with a hand-written `cancel_booking` plan; confirm the step succeeds and the booking's status changes
-- [ ] 8.4 Verify the degraded paths in one pass — expired token → 401, unknown skill → 422, empty steps → 422, notification step naming another user → delivered to the token's `user_id`, one agent stopped → `/agents` reports it unreachable while the other stays routable
+- [x] 8.1 Register and log in a test user via `users-svc`, then `POST localhost:9003/orchestrate` with a hand-written two-step plan (`create_booking` + `send_notification`) and the JWT; verify both steps report `succeeded`, the booking exists in `booking-svc`, and the notification exists in `notif-svc`
+- [x] 8.2 Verify correlation propagation for that run by grepping the one id across `orchestrator-agent`, `booking-agent`, `notification-agent`, `booking-svc`, and `notif-svc` logs
+- [x] 8.3 Verify the cancel path with a hand-written `cancel_booking` plan; confirm the step succeeds and the booking's status changes
+- [x] 8.4 Verify the degraded paths in one pass — expired token → 401, unknown skill → 422, empty steps → 422, notification step naming another user → delivered to the token's `user_id`, one agent stopped → `/agents` reports it unreachable while the other stays routable
 
 ## 9. End-to-end verification through Claude Desktop
 
