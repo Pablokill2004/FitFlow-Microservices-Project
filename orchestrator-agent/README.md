@@ -106,13 +106,16 @@ reproduce un plan `create_booking` + `send_notification` de punta a punta:
 
 ```bash
 # 1) Registrar un usuario y obtener su JWT
+# La password se toma del entorno: no hay credenciales escritas en el repositorio.
+export FITFLOW_DEMO_PASSWORD='elegi-una-password'
+
 curl -s -X POST http://localhost:8003/users/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"orch-demo@fitflow.com","password":"Secret123!","full_name":"Orchestrator Demo"}'
+  -d "{\"email\":\"orch-demo@fitflow.com\",\"password\":\"$FITFLOW_DEMO_PASSWORD\",\"full_name\":\"Orchestrator Demo\"}"
 
 TOKEN=$(curl -s -X POST http://localhost:8003/users/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"orch-demo@fitflow.com","password":"Secret123!"}' \
+  -d "{\"email\":\"orch-demo@fitflow.com\",\"password\":\"$FITFLOW_DEMO_PASSWORD\"}" \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 
 # 2) Ver qué clases existen de verdad (los ids cambian en cada

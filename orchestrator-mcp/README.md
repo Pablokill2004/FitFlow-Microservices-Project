@@ -172,8 +172,9 @@ como levantarlo si todavia no esta en `docker-compose.yml`):
 
 ```bash
 ./.venv/bin/python -c "
-import server
-print(server.login('e2e@fitflow.com', 'Secret123!'))
+import os, server
+# La password se toma del entorno: no hay credenciales en el repositorio.
+print(server.login('e2e@fitflow.com', os.environ['FITFLOW_DEMO_PASSWORD']))
 classes = server.list_classes()
 print(classes)
 plan = [

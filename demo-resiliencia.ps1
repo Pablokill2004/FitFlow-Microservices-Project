@@ -16,20 +16,41 @@
 .PARAMETER NoPause
     No espera Enter entre pasos (para una corrida de prueba rapida).
 
+.PARAMETER Usuario
+    Email del usuario de demo. Default: demo@fitflow.com
+
+.PARAMETER Password
+    Password del usuario de demo. Si no se pasa, se toma de la variable de
+    entorno FITFLOW_DEMO_PASSWORD, y si tampoco esta, se pide por consola.
+    No hay ninguna credencial escrita en este archivo a proposito.
+
 .EXAMPLE
+    $env:FITFLOW_DEMO_PASSWORD = 'la-que-elijas'
     .\demo-resiliencia.ps1 -Reset
+
+.EXAMPLE
+    .\demo-resiliencia.ps1 -Reset -Password 'la-que-elijas'
 #>
 [CmdletBinding()]
 param(
     [switch]$Reset,
-    [switch]$NoPause
+    [switch]$NoPause,
+    [string]$Usuario  = 'demo@fitflow.com',
+    [string]$Password = $env:FITFLOW_DEMO_PASSWORD
 )
 
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
-$Usuario   = 'demo@fitflow.com'
-$Password  = 'Secret123!'
+# La credencial nunca vive en el repositorio: llega por parametro, por
+# variable de entorno, o se pide aca. Con -Reset el usuario se crea con
+# esta misma password, asi que sirve cualquiera.
+if ([string]::IsNullOrWhiteSpace($Password)) {
+    $segura   = Read-Host -Prompt 'Password para el usuario de demo' -AsSecureString
+    $Password = [System.Net.NetworkCredential]::new('', $segura).Password
+}
+if ([string]::IsNullOrWhiteSpace($Password)) { throw 'Se necesita una password para el usuario de demo.' }
+
 $UsersSvc  = 'http://localhost:8003'
 $BookSvc   = 'http://localhost:8001'
 $NotifSvc  = 'http://localhost:8002'
@@ -115,8 +136,9 @@ if ($Reset) {
         } catch { }
     }
     if (-not $ok) { throw 'Los servicios no respondieron a tiempo.' }
+    $bodyRegistro = @{ email = $Usuario; password = $Password; full_name = 'Demo' } | ConvertTo-Json -Compress
     Invoke-RestMethod -Method Post -Uri "$UsersSvc/users/register" -ContentType 'application/json' `
-        -Body "{`"email`":`"$Usuario`",`"password`":`"$Password`",`"full_name`":`"Demo`"}" | Out-Null
+        -Body $bodyRegistro | Out-Null
     Write-Host "   stack listo y usuario $Usuario registrado" -ForegroundColor Green
 }
 
@@ -124,11 +146,31 @@ Write-Host ""
 Write-Host "  Contenedores en ejecucion:" -ForegroundColor White
 docker compose ps --format "   {{.Service}}`t{{.State}}" | Sort-Object
 
+$bodyLogin = @{ email = $Usuario; password = $Password } | ConvertTo-Json -Compress
 $r = Invoke-RestMethod -Method Post -Uri "$UsersSvc/users/login" -ContentType 'application/json' `
-        -Body "{`"email`":`"$Usuario`",`"password`":`"$Password`"}"
+        -Body $bodyLogin
 $script:Headers = @{ Authorization = "Bearer $($r.access_token)" }
 Write-Host ""
 Write-Host "  Login OK: JWT obtenido de users-svc ($($r.access_token.Length) chars)" -ForegroundColor Green
+
+# La demo necesita 4 clases libres (1 sana + 3 con notif-svc caido). Si ya se
+# reservo en una corrida anterior, booking-svc responde 400 y el PASO 3
+# arrancaria con un error en pantalla, justo lo que no se quiere grabar.
+# booking-svc no expone un listado de reservas, asi que el indicador de base
+# sucia es el outbox: cada reserva deja una entrada.
+$previo = Invoke-RestMethod -Uri "$BookSvc/resilience/status"
+$usadas = $previo.outbox.sent + $previo.outbox.pending
+if ($usadas -gt 0) {
+    Write-Host ""
+    Write-Host "  AVISO: esta base ya tiene $usadas reserva(s) de una corrida anterior." -ForegroundColor Yellow
+    Write-Host "  La demo necesita 4 clases libres; sin eso el PASO 3 mostraria un 400." -ForegroundColor Yellow
+    Write-Host "  Volve a correr con -Reset para empezar limpio." -ForegroundColor Yellow
+    Write-Host ""
+    if (-not $NoPause) {
+        $sigue = Read-Host '  Continuar de todos modos? (s/N)'
+        if ($sigue -ne 's') { Write-Host '  Cancelado.' -ForegroundColor DarkGray; return }
+    }
+}
 
 Pausa 'Enter para empezar el PASO 3'
 

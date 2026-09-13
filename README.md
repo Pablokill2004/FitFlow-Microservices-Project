@@ -96,13 +96,16 @@ ejecutables tal cual — reproducen los pasos 3 a 5 del video:
 
 ```bash
 # 1) Un usuario y una reserva con notif-svc arriba (responde "sent")
+# La password se toma del entorno: no hay credenciales escritas en el repositorio.
+export FITFLOW_DEMO_PASSWORD='elegi-una-password'
+
 curl -s -X POST http://localhost:8003/users/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"resiliencia-demo@fitflow.com","password":"Secret123!","full_name":"Resiliencia Demo"}'
+  -d "{\"email\":\"resiliencia-demo@fitflow.com\",\"password\":\"$FITFLOW_DEMO_PASSWORD\",\"full_name\":\"Resiliencia Demo\"}"
 
 TOKEN=$(curl -s -X POST http://localhost:8003/users/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"resiliencia-demo@fitflow.com","password":"Secret123!"}' \
+  -d "{\"email\":\"resiliencia-demo@fitflow.com\",\"password\":\"$FITFLOW_DEMO_PASSWORD\"}" \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 
 curl -s -X POST http://localhost:8001/bookings \
