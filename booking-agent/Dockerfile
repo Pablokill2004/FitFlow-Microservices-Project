@@ -4,6 +4,7 @@ WORKDIR /app
 COPY booking-agent/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY booking-agent/app.py .
+COPY booking-agent/observability.py .
 COPY fitflow-mcp/server.py /opt/fitflow-mcp/server.py
 
 EXPOSE 9001

@@ -61,11 +61,42 @@ def _notif_svc_url() -> str:
     return resolve_service_base_url("notif-svc", 8002)
 
 
+def _correlation_headers() -> dict:
+    """Propaga FITFLOW_CORRELATION_ID (task 11.3) para que booking-svc/notif-svc
+    adopten el mismo id en vez de generar uno nuevo. Cuando corre bajo Claude
+    Desktop (Task 2B) la variable no existe y no se agrega ningun header, asi
+    que el comportamiento actual no cambia.
+    """
+    correlation_id = os.getenv("FITFLOW_CORRELATION_ID")
+    return {"x-correlation-id": correlation_id} if correlation_id else {}
+
+
 def _auth_headers() -> dict:
     token = _session["token"] or os.getenv("FITFLOW_ACCESS_TOKEN")
     if not token:
         raise RuntimeError("Debes iniciar sesion primero usando la herramienta 'login'.")
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", **_correlation_headers()}
+
+
+def _raise_for_status_with_detail(resp: requests.Response) -> None:
+    """Igual que resp.raise_for_status(), pero conserva el 'detail' del cuerpo
+    JSON del microservicio en vez de descartarlo. Sin esto, un error de
+    negocio (clase llena, reserva duplicada) llega al agente como un generico
+    '400 Client Error' sin el mensaje real (task 11.6). Si no hay 'detail'
+    (respuesta no JSON), el comportamiento es identico al de antes.
+    """
+    if resp.ok:
+        return
+    detail = None
+    try:
+        body = resp.json()
+        if isinstance(body, dict):
+            detail = body.get("detail")
+    except ValueError:
+        pass
+    if detail:
+        raise RuntimeError(str(detail))
+    resp.raise_for_status()
 
 
 @mcp.tool()
@@ -73,7 +104,9 @@ def login(email: str, password: str) -> str:
     """Inicia sesion en FitFlow (users-svc) y guarda el token para reservar clases."""
     url = f"{_users_svc_url()}/users/login"
     try:
-        resp = requests.post(url, json={"email": email, "password": password}, timeout=5)
+        resp = requests.post(
+            url, json={"email": email, "password": password}, headers=_correlation_headers(), timeout=5
+        )
     except requests.RequestException as exc:
         raise RuntimeError(f"No se pudo contactar a users-svc: {exc}") from exc
 
@@ -91,8 +124,8 @@ def login(email: str, password: str) -> str:
 def get_available_classes() -> list[dict]:
     """Lista las clases fitness disponibles en FitFlow (booking-svc)."""
     url = f"{_booking_svc_url()}/classes"
-    resp = requests.get(url, timeout=5)
-    resp.raise_for_status()
+    resp = requests.get(url, headers=_correlation_headers(), timeout=5)
+    _raise_for_status_with_detail(resp)
     return resp.json()
 
 
@@ -103,7 +136,7 @@ def create_booking(class_id: int) -> dict:
     resp = requests.post(url, json={"class_id": class_id}, headers=_auth_headers(), timeout=5)
     if resp.status_code == 401:
         raise RuntimeError("Sesion invalida o expirada. Vuelve a usar la herramienta 'login'.")
-    resp.raise_for_status()
+    _raise_for_status_with_detail(resp)
     logger.info("booking created via MCP class_id=%s", class_id)
     return resp.json()
 
@@ -115,7 +148,7 @@ def cancel_booking(booking_id: int) -> dict:
     resp = requests.delete(url, headers=_auth_headers(), timeout=5)
     if resp.status_code == 401:
         raise RuntimeError("Sesion invalida o expirada. Vuelve a usar la herramienta 'login'.")
-    resp.raise_for_status()
+    _raise_for_status_with_detail(resp)
     logger.info("booking cancelled via MCP booking_id=%s", booking_id)
     return resp.json()
 
@@ -124,8 +157,10 @@ def cancel_booking(booking_id: int) -> dict:
 def send_notification(user_id: int, message: str) -> dict:
     """Envia una notificacion a un usuario a traves de notif-svc. No requiere sesion."""
     url = f"{_notif_svc_url()}/notifications"
-    resp = requests.post(url, json={"user_id": user_id, "message": message}, timeout=5)
-    resp.raise_for_status()
+    resp = requests.post(
+        url, json={"user_id": user_id, "message": message}, headers=_correlation_headers(), timeout=5
+    )
+    _raise_for_status_with_detail(resp)
     logger.info("notification sent via MCP user_id=%s", user_id)
     return resp.json()
 
