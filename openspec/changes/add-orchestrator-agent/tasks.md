@@ -63,11 +63,11 @@
 
 ## 9. End-to-end verification through Claude Desktop
 
-- [ ] 9.1 Register `orchestrator-mcp` in Claude Desktop's config following the `fitflow-mcp/README.md` pattern (absolute venv python + absolute `server.py` path), with `fitflow` disconnected per design decision 8; verify after a full restart that Claude Desktop lists all four orchestrator tools
-- [ ] 9.2 Run the rubric flow: log in through the session, then type "Reserva la clase de yoga y avísame" (reworded from the rubric's "para el viernes": yoga seeds at now+1 day, so a Friday yoga class only exists if the stack was first started on a Thursday); verify the session calls `discover_agents` and `list_classes`, submits a two-step plan, and both steps report `succeeded`
-- [ ] 9.3 Confirm the A2A path was actually taken and not shadowed by a direct tool — verify the run's correlation id appears in `docker compose logs booking-agent` and `notification-agent`, which only happens if the delegation went through A2A
-- [ ] 9.4 Verify a natural-language cancel instruction in the same session produces a `cancel_booking` step that succeeds
-- [ ] 9.5 Verify an out-of-scope instruction ("cámbiame la contraseña") does not fabricate a delegation — the session reports that no discovered skill covers it, or the orchestrator returns 422
+- [x] 9.1 Register `orchestrator-mcp` in Claude Desktop's config following the `fitflow-mcp/README.md` pattern (absolute venv python + absolute `server.py` path), with `fitflow` disconnected per design decision 8; verify after a full restart that Claude Desktop lists all four orchestrator tools
+- [x] 9.2 Run the rubric flow: log in through the session, then type "Reserva la clase de yoga y avísame" (reworded from the rubric's "para el viernes": yoga seeds at now+1 day, so a Friday yoga class only exists if the stack was first started on a Thursday); verify the session calls `discover_agents` and `list_classes`, submits a two-step plan, and both steps report `succeeded`
+- [x] 9.3 Confirm the A2A path was actually taken and not shadowed by a direct tool — verify the run's correlation id appears in `docker compose logs booking-agent` and `notification-agent`, which only happens if the delegation went through A2A
+- [x] 9.4 Verify a natural-language cancel instruction in the same session produces a `cancel_booking` step that succeeds
+- [x] 9.5 Verify an out-of-scope instruction ("cámbiame la contraseña") does not fabricate a delegation — the session reports that no discovered skill covers it, or the orchestrator returns 422
 
 ## 10. README (Task 4C)
 
