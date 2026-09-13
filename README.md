@@ -3,6 +3,10 @@
 Plataforma de reservas de clases fitness construida con microservicios y el
 principio **Database per Service**.
 
+# Video demostración completo
+
+[🟢 *Haz clic aquí*](https://youtu.be/9kcXjhaaOyA)
+
 ## Documentacion del proyecto
 
 - [users-svc](users-svc/README.md): implementacion del servicio de usuarios.
